@@ -1,4 +1,10 @@
-function get(idx: number, buf: Uint8Array): number {
+// @ts-check
+
+/**
+ * @param {number} idx
+ * @param {Uint8Array} buf
+ */
+function get(idx, buf) {
     if (!buf) {
         throw ReferenceError('buf cant be undefined or null');
     }
@@ -8,4 +14,4 @@ function get(idx: number, buf: Uint8Array): number {
     return buf[idx];
 }
 
-export default get;
+module.exports.get = get;

@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import fs from 'fs-extra';
 import path from 'path';
-import GIFrame from '../src/giframe';
+import {GIFrame} from '../src/giframe';
 import { PNG } from 'pngjs';
 import { writeTempImage, diffImage, cleanTempDir } from './utils';
 
@@ -27,7 +27,7 @@ function createBase64(pixels, obj): string {
 
 describe('Giframe', function () {
 
-    this.timeout(50000);
+    this.timeout(2000);
 
     it('should return 0 with no buffer', () => {
         const giframe = new GIFrame();
@@ -74,12 +74,13 @@ describe('Giframe', function () {
 
         it('should automatically enter next stage when feeded enough bytes', async () => {
             const giframe = new GIFrame();
+            console.error(GIF_PATH)
             giframe.feed(fs.readFileSync(GIF_PATH));
             expect((await giframe.getFrame()).pixels[0]).to.be.a('number');
         });
 
         it('should generate a correct first-frame image', async () => {
-            const giframe = new GIFrame(0, { usePNG: true });
+            const giframe = new GIFrame(0);
             giframe.feed(fs.readFileSync(GIF_PATH));
             const frame = await giframe.getFrame();
             const base64 = createBase64(frame.pixels, frame)
@@ -89,7 +90,7 @@ describe('Giframe', function () {
         });
 
         it('should generate a correct second-frame image', async () => {
-            const giframe = new GIFrame(1, { usePNG: true });
+            const giframe = new GIFrame(1);
             giframe.feed(fs.readFileSync(GIF_PATH));
             const frame = await giframe.getFrame();
             const base64 = createBase64(frame.pixels, frame);
@@ -104,7 +105,7 @@ describe('Giframe', function () {
                 highWaterMark: 1024 * 20
             });
 
-            const giframe = new GIFrame(0, { usePNG: true });
+            const giframe = new GIFrame(0);
             giframe.on(GIFrame.event.DONE, () => stream.close());
             stream.on('data', chunk => {
                 // @ts-ignore
@@ -130,9 +131,8 @@ describe('Giframe', function () {
 
         function check(expects: Array<boolean>) {
             const names: Array<string> = ['init', 'meta', 'done', 'already'];
-            listeners.forEach((l, idx) => {
-                expect(l.calledOnce, `${names[idx]} event`).to.be.equal(expects[idx]);
-            });
+            const called = listeners.map(l => l.calledOnce);
+            expect(called, "called events").to.be.deep.equal(expects);
         }
 
         beforeEach(async () => {
@@ -159,14 +159,14 @@ describe('Giframe', function () {
         it('should only trigger \'INIT\' event', () => {
             giframe.feed(buf.slice(0, 50));
 
-            check([true, false, false, false, false]);
+            check([true, false, false, false]);
         });
 
         it('should trigger all events except \'ALREADY\'', () => {
             giframe.feed(buf.slice(0, 50));
             giframe.feed(buf.slice(50, 85));
 
-            check([true, true, true, true, false]);
+            check([true, true, true, true]);
         });
 
         it('should trigger all events', () => {
@@ -174,14 +174,14 @@ describe('Giframe', function () {
             giframe.feed(buf.slice(50, 85));
             giframe.feed(buf.slice(85, 100));
 
-            check([true, true, true, true, true]);
+            check([true, true, true, true]);
         });
 
         it('should only trigger \'INIT\', \'META\' event after locked', () => {
             giframe.on(GIFrame.event.META, () => giframe.lock())
             giframe.feed(buf);
 
-            check([true, true, false, false, false]);
+            check([true, true, false, false]);
         });
 
         it('should trigger \'PIXEL\', \'DONE\' event only when unlocked', done => {
@@ -191,29 +191,29 @@ describe('Giframe', function () {
                 process.nextTick(() => {
                     giframe.unlock();
                     giframe.feed(new Uint8Array(0));
-                    check([true, true, true, true, false]);
+                    check([true, true, true, true]);
                     done();
                 });
             });
 
             giframe.feed(buf);
-            check([true, true, false, false, false]);
+            check([true, true, false, false]);
         });
 
         it('should not process when locked', () => {
             giframe.feed(buf.slice(0, 50));
-            check([true, false, false, false, false]);
+            check([true, false, false, false]);
 
             giframe.lock();
             giframe.feed(buf.slice(50, 100));
-            check([true, false, false, false, false]);
+            check([true, false, false, false]);
             expect(giframe.bufferLength).to.be.equal(50);
         });
 
         it('should not process when stage is already', () => {
             giframe.feed(buf);
             giframe.feed(buf);
-            check([true, true, true, true, true]);
+            check([true, true, true, true]);
             expect(() => giframe.feed(buf)).not.to.throw();
         });
     });

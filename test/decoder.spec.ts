@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import Decoder from '../src/decoder';
+import {Decoder} from '../src/decoder/decoder';
 import fs from 'fs-extra';
 import path from 'path';
 import flattenDeep from 'lodash.flattendeep';
@@ -34,6 +34,7 @@ describe('Decoder', () => {
         const d: Decoder = new Decoder(buf);
         d.lastError = null;
         d.decodeMetaAndFrameInfo(buf.slice(1, buffer.length), 0);
+        // @ts-ignore
         expect(d.lastError.message).to.include('Unknown gif block');
     });
 
@@ -135,7 +136,7 @@ describe('Decoder', () => {
                 offset += 10;
             }
 
-            let pixels: Array<number> = null;
+            let pixels: number[] | null = null;
             while (!(pixels = decoder.decodeFrameRGBA(0, buf.slice(0, offset)))) {
                 offset += 10;
             }

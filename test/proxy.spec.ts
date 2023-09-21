@@ -1,8 +1,9 @@
 import { expect } from 'chai';
-import get from '../src/utils/proxy';
+import {get} from '../src/utils/proxy';
 
 describe('Proxy', () => {
     it('should throw error when buffer is null', function () {
+        // @ts-ignore
         const access = () => get(0, null);
         expect(access).to.throw(ReferenceError);
         expect(access).to.throw('buf cant be undefined or null');

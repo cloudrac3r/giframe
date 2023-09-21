@@ -8,7 +8,7 @@ export interface IFrameInfo {
     paletteSize: number;
     dataOffset: number;
     dataLength: number;
-    transparentIndex: number;
+    transparentIndex: number | null;
     interlaced: boolean;
     delay: number;
     disposal: number;

@@ -1,30 +1,32 @@
-import { OutputLZWMsg } from '../types';
-import get from '../utils/proxy';
+// @ts-check
 
-export interface IOutputLZW {
-    output: Uint8Array;
-    ok: boolean;
-    msg: OutputLZWMsg;
-}
+const {get} = require("../utils/proxy");
 
-export function unpackLZW(buf: Uint8Array, p: number, outputLen: number): IOutputLZW {
-    let msg: OutputLZWMsg;
-    let ok: boolean = true;
-    const output: Uint8Array = new Uint8Array(outputLen);
-    const minCodeSize: number = get(p++, buf);
+/**
+ * @param {Uint8Array} buf
+ * @param {number} p
+ * @param {number} outputLen
+ */
+function unpackLZW(buf, p, outputLen) {
+    /** @type {string | undefined} */
+    let msg = undefined;
+    let ok = true;
+    const output = new Uint8Array(outputLen);
+    const minCodeSize = get(p++, buf);
 
-    const clearCode: number = 1 << minCodeSize;
-    const eoiCode: number = clearCode + 1;
-    let nextCode: number = eoiCode + 1;
+    const clearCode = 1 << minCodeSize;
+    const eoiCode = clearCode + 1;
+    let nextCode = eoiCode + 1;
 
-    let curCodeSize: number = minCodeSize + 1;
-    let codeMask: number = (1 << curCodeSize) - 1;
-    let curShift: number = 0;
-    let cur: number = 0;
-    let op: number = 0;
-    let subBlockSize: number = get(p++, buf);
-    const codeTable: Int32Array = new Int32Array(4096);
-    let prevCode: number = null;
+    let curCodeSize = minCodeSize + 1;
+    let codeMask = (1 << curCodeSize) - 1;
+    let curShift = 0;
+    let cur = 0;
+    let op = 0;
+    let subBlockSize = get(p++, buf);
+    const codeTable = new Int32Array(4096);
+    /** @type {number?} */
+    let prevCode = null;
 
     while (true) {
         while (curShift < 16) {
@@ -47,7 +49,7 @@ export function unpackLZW(buf: Uint8Array, p: number, outputLen: number): IOutpu
             break;
         }
 
-        const code: number = cur & codeMask;
+        const code = cur & codeMask;
         cur >>= curCodeSize;
         curShift -= curCodeSize;
 
@@ -63,28 +65,30 @@ export function unpackLZW(buf: Uint8Array, p: number, outputLen: number): IOutpu
             break;
         }
 
-        const chaseCode: number = code < nextCode ? code : prevCode;
+        /** @type {number} */
+        // @ts-ignore
+        const chaseCode = code < nextCode ? code : prevCode;
 
-        let chaseLen: number = 0;
-        let chase: number = chaseCode;
+        let chaseLen = 0;
+        let chase = chaseCode;
         while (chase > clearCode) {
             chase = codeTable[chase] >> 8;
             ++chaseLen;
         }
 
-        const k: number = chase;
+        const k = chase;
 
-        const opEnd: number = op + chaseLen + (chaseCode !== code ? 1 : 0);
+        const opEnd = op + chaseLen + (chaseCode !== code ? 1 : 0);
         if (opEnd > outputLen) {
             ok = false;
-            msg = OutputLZWMsg.LONGER;
+            msg = 'Warning, gif stream longer than expected.';
             return { output, ok, msg};
         }
 
         output[op++] = k;
 
         op += chaseLen;
-        let b: number = op;
+        let b = op;
 
         if (chaseCode !== code) {
             output[op++] = k;
@@ -110,8 +114,10 @@ export function unpackLZW(buf: Uint8Array, p: number, outputLen: number): IOutpu
 
     if (op !== outputLen) {
         ok = false;
-        msg = OutputLZWMsg.SHORTER;
+        msg = 'Warning, gif stream shorter than expected.';
     }
 
-    return { output, ok, msg};
+    return { output, ok, msg };
 }
+
+module.exports.unpackLZW = unpackLZW

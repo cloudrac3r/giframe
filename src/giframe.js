@@ -1,63 +1,69 @@
-import { IFrameInfo, ICreateBase64Opts } from './types';
-import Decoder from './decoder';
-import EventEmitter from './utils/event.emitter';
+// @ts-check
 
-enum Stage {
-    NONE = 'none',
-    INIT = 'init',
-    META = 'decode-meta',
-    DONE = 'done',
-    ALREADY = 'already-done'
+const assert = require("assert").strict;
+const {Decoder} = require("./decoder/decoder");
+const {EventEmitter} = require("events");
+// const ee = require("./utils/event.emitter");
+
+const Stage = {
+    'NONE': 'none',
+    'INIT': 'init',
+    'META': 'decode-meta',
+    'DONE': 'done',
+    'ALREADY': 'already-done',
 };
 
-type EmitData = Array<number>|string|IFrameInfo;
-interface IDeferred<Ret> {
-    promise: Promise<Ret>;
-    resolve: (data: Ret) => unknown;
-    reject: Function;
-}
-interface IGIFrameOpts {
-    usePNG: boolean;
-}
+/**
+ * @typedef {number[]|string|import("./types").IFrameInfo} EmitData
+ */
+/**
+ * @template Ret
+ * @typedef IDeferred<Ret>
+ * @prop {Promise<Ret>} promise
+ * @prop {(data: Ret) => any} resolve
+ * @prop {(..._: any[]) => any} reject
+ */
+/**
+ * @typedef IReturn
+ * @prop {number} width
+ * @prop {number} height
+ * @prop {number[]} pixels
+ */
 
-interface IReturn {
-    width: number;
-    height: number;
-    pixels: number[];
-}
-
-const DEFAULT_OPTS: IGIFrameOpts = {
-    usePNG: false
-};
-
-class GIFrame extends EventEmitter<EmitData> {
+class GIFrame extends EventEmitter {
     static event = Stage;
 
-    private stage: Stage = Stage.NONE;
-    private decoder: Decoder = null;
-    private frameIdx: number = 0;
-    private buf: Uint8Array;
-    private deferred: IDeferred<IReturn>;
-    private pixels: Array<number> = null;
-    private isLocked: boolean = false;
-    public opts: IGIFrameOpts;
+    stage = Stage.NONE;
+    /** @type {Decoder?} */
+    decoder = null;
+    frameIdx = 0;
+    /** @type {Uint8Array?} */
+    buf = null;
+    /** @type {number[]?} */
+    pixels = null;
+    isLocked = false;
 
-    constructor(frameIdx: number = 0, opts?: IGIFrameOpts) {
+    constructor(frameIdx = 0) {
         super();
         this.frameIdx = frameIdx;
-        if (opts) {
-            this.opts = Object.assign({}, DEFAULT_OPTS, opts);
-        }
-        else {
-            this.opts = Object.create(DEFAULT_OPTS);
-        }
-        let resolve: (data: IReturn) => unknown;
-        let reject: Function;
-        const promise: Promise<IReturn> = new Promise((r, j) => (resolve = r, reject = j));
+        const deferred = {};
+        let resolve, reject;
+        /** @type {Promise<IReturn>} */
+        const promise = new Promise((r, j) => {
+            resolve = r;
+            reject = j;
+        });
+        /** @type {IDeferred<IReturn>} */
+        // @ts-ignore
         this.deferred = { promise, resolve, reject };
+        assert(this.deferred.resolve);
+        assert(this.deferred.reject);
     }
 
-    private concat(buf: Uint8Array): Uint8Array {
+    /**
+     * @param {Uint8Array} buf
+     */
+    concat(buf) {
         let buffer = buf;
         if (this.buf) {
             buffer = new Uint8Array(this.buf.length + buf.length);
@@ -67,36 +73,46 @@ class GIFrame extends EventEmitter<EmitData> {
         return buffer;
     }
 
-    private switchStage(stage: Stage, data?: EmitData): void {
+    /**
+     * @param {string} stage
+     * @param {EmitData?} data
+     */
+    switchStage(stage, data = null) {
         this.stage = stage;
         this.emit(stage, data);
     }
 
-    get bufferLength(): number {
+    get bufferLength() {
         if (!this.buf) {
             return 0;
         }
         return this.buf.length;
     }
 
-    lock(): void {
+    lock() {
         this.isLocked = true;
     }
 
-    unlock(): void {
+    unlock() {
         this.isLocked = false;
     }
 
-    feed(appendedBuf: Uint8Array): void {
+    /**
+     * @param {Uint8Array} appendedBuf
+     */
+    feed(appendedBuf) {
         if (this.isLocked) {
             return;
         }
 
-        const buf: Uint8Array = this.concat(appendedBuf);
+        const buf = this.concat(appendedBuf);
         this.update(buf);
     }
 
-    private update(buf: Uint8Array): void {
+    /**
+     * @param {Uint8Array} buf
+     */
+    update(buf) {
         // the workflow is locked
         if (this.isLocked || Stage.ALREADY === this.stage) {
             return;
@@ -124,6 +140,7 @@ class GIFrame extends EventEmitter<EmitData> {
 
         if (Stage.INIT === this.stage) {
             const decoder = this.decoder;
+            assert(decoder);
             const finished = decoder.decodeMetaAndFrameInfo(buf, this.frameIdx);
             if (finished) {
                 this.switchStage(Stage.META, decoder.getFrameInfo(this.frameIdx));
@@ -135,6 +152,7 @@ class GIFrame extends EventEmitter<EmitData> {
 
         if (Stage.META === this.stage) {
             const decoder = this.decoder;
+            assert(decoder);
             const pixels = decoder.decodeFrameRGBA(this.frameIdx, buf);
             if (pixels) {
                 this.pixels = pixels;
@@ -152,9 +170,9 @@ class GIFrame extends EventEmitter<EmitData> {
         throw err;
     }
 
-    getFrame(): Promise<IReturn> {
+    getFrame() {
         return this.deferred.promise;
     }
 }
 
-export default GIFrame;
+module.exports.GIFrame = GIFrame

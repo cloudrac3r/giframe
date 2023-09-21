@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import ora from 'ora';
-import GIFrame from '../../src/giframe';
+import {GIFrame} from '../../src/giframe';
 import assert from 'assert';
 import { PNG } from 'pngjs';
 import { IFrameInfo } from '../../src/types';

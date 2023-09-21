@@ -1,34 +1,20 @@
-/**
+// @ts-check
+
+/*
  * a GIF decoder, support stream-like decoding
  * folk from omggif
  */
-import { IFrameInfo } from '../types';
-import { unpackLZW } from './lzw';
-import get from '../utils/proxy';
+const assert = require("assert").strict;
+const {unpackLZW} = require("./lzw");
+const {get} = require("../utils/proxy");
 
 class Decoder {
-    private pos: number;
-    private globalPaletteOffset: number;
-    private globalPaletteSize: number;
-    private eof: boolean;
-    private delay: number;
-    private transparentIndex: number;
-    private disposal: number;
-    private loopCount: number;
-    private width: number;
-    private height: number;
-    private frames: Array<IFrameInfo>;
-    private lastCorrectPos: number;
-
-    public lastError: Error;
-
-    constructor(buf: Uint8Array) {
-        this.init(buf);
-    }
-
-    private init(buf: Uint8Array): void {
+    /**
+     * @param {Uint8Array} buf
+     */
+    constructor(buf) {
         this.pos = 0;
-        let p: number = this.pos;
+        let p = this.pos;
 
         if (
             get(p++, buf) !== 0x47
@@ -41,15 +27,14 @@ class Decoder {
             throw new Error('Invalid GIF 87a/89a header.');
         }
 
-        const width: number = get(p++, buf) | get(p++, buf) << 8;
-        const height: number = get(p++, buf) | get(p++, buf) << 8;
-        const pf0: number = get(p++, buf);
-        const globalPaletteFlag: number = pf0 >> 7;
-        const numGlobalColorsPow2: number = pf0 & 0x7;
-        const numGlobalColors: number = 1 << (numGlobalColorsPow2 + 1);
-        /* eslint-disable @typescript-eslint/no-unused-vars */
-        const background: number = get(p++, buf);
-        /* eslint-enable @typescript-eslint/no-unused-vars */
+        this.width = get(p++, buf) | get(p++, buf) << 8;
+        this.height = get(p++, buf) | get(p++, buf) << 8;
+        const pf0 = get(p++, buf);
+        const globalPaletteFlag = pf0 >> 7;
+        const numGlobalColorsPow2 = pf0 & 0x7;
+        const numGlobalColors = 1 << (numGlobalColorsPow2 + 1);
+        /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+        const background = get(p++, buf);
         get(p++, buf);
 
         this.globalPaletteOffset = null;
@@ -63,21 +48,30 @@ class Decoder {
 
         this.eof = false;
 
+        /** @type {import("../types").IFrameInfo[]} */
         this.frames = [];
 
         this.delay = 0;
+        /** @type {number?} */
         this.transparentIndex = null;
         this.disposal = 0;
+        /** @type {number?} */
         this.loopCount = null;
 
-        this.width = width;
-        this.height = height;
-
         this.pos = p;
+
+        /** @type {number?} */
+        this.lastCorrectPos = null;
+        /** @type {Error?} */
+        this.lastError = null;
     }
 
-    decodeMetaAndFrameInfo(buf: Uint8Array, frameIdx: number): boolean {
-        let p: number = this.pos;
+    /**
+     * @param {Uint8Array} buf
+     * @param {number} frameIdx
+     */
+    decodeMetaAndFrameInfo(buf, frameIdx) {
+        let p = this.pos;
         this.lastCorrectPos = p;
         try {
             while (!this.eof && p < buf.length) {
@@ -108,7 +102,7 @@ class Decoder {
                                 else {
                                     p += 12;
                                     while (true) {
-                                        const blockSize: number = get(p++, buf);
+                                        const blockSize = get(p++, buf);
                                         if (!(blockSize >= 0)) {
                                             throw Error('Invalid block size');
                                         }
@@ -125,7 +119,7 @@ class Decoder {
                                 if (get(p++, buf) !== 0x4 || get(p + 4, buf) !== 0) {
                                     throw new Error('Invalid graphics extension block.');
                                 }
-                                const pf1: number = get(p++, buf);
+                                const pf1 = get(p++, buf);
                                 this.delay = get(p++, buf) | get(p++, buf) << 8;
                                 this.transparentIndex = get(p++, buf);
                                 if ((pf1 & 1) === 0) {
@@ -139,7 +133,7 @@ class Decoder {
                             case 0x01:
                             case 0xfe:
                                 while (true) {
-                                    const blockSize: number = get(p++, buf);
+                                    const blockSize = get(p++, buf);
                                     if (!(blockSize >= 0)) {
                                         throw Error('Invalid block size');
                                     }
@@ -158,18 +152,18 @@ class Decoder {
                         break;
 
                     case 0x2c:
-                        const x: number = get(p++, buf) | get(p++, buf) << 8;
-                        const y: number = get(p++, buf) | get(p++, buf) << 8;
-                        const w: number = get(p++, buf) | get(p++, buf) << 8;
-                        const h: number = get(p++, buf) | get(p++, buf) << 8;
-                        const pf2: number = get(p++, buf);
-                        const localPaletteFlag: number = pf2 >> 7;
-                        const interlaceFlag: number = pf2 >> 6 & 1;
-                        const numLocalColorsPow2: number = pf2 & 0x7;
-                        const numLocalColors: number = 1 << (numLocalColorsPow2 + 1);
-                        let paletteOffset: number = this.globalPaletteOffset;
-                        let paletteSize: number = this.globalPaletteSize;
-                        let hasLocalPalette: boolean = false;
+                        const x = get(p++, buf) | get(p++, buf) << 8;
+                        const y = get(p++, buf) | get(p++, buf) << 8;
+                        const w = get(p++, buf) | get(p++, buf) << 8;
+                        const h = get(p++, buf) | get(p++, buf) << 8;
+                        const pf2 = get(p++, buf);
+                        const localPaletteFlag = pf2 >> 7;
+                        const interlaceFlag = pf2 >> 6 & 1;
+                        const numLocalColorsPow2 = pf2 & 0x7;
+                        const numLocalColors = 1 << (numLocalColorsPow2 + 1);
+                        let paletteOffset = this.globalPaletteOffset;
+                        let paletteSize = this.globalPaletteSize;
+                        let hasLocalPalette = false;
                         if (localPaletteFlag) {
                             hasLocalPalette = true;
                             paletteOffset = p;
@@ -177,11 +171,11 @@ class Decoder {
                             p += numLocalColors * 3;
                         }
 
-                        const dataOffset: number = p;
+                        const dataOffset = p;
 
                         p++;
                         while (true) {
-                            const blockSize: number = get(p++, buf);
+                            const blockSize = get(p++, buf);
                             if (!(blockSize >= 0)) {
                                 throw Error('Invalid block size');
                             }
@@ -192,13 +186,15 @@ class Decoder {
                             p += blockSize;
                         }
 
-                        const frameInfo: IFrameInfo = {
+                        const frameInfo = {
                             x: x,
                             y: y,
                             width: w,
                             height: h,
                             hasLocalPalette: hasLocalPalette,
+                            /** @type {number} */ // @ts-ignore
                             paletteOffset: paletteOffset,
+                            /** @type {number} */ // @ts-ignore
                             paletteSize: paletteSize,
                             dataOffset: dataOffset,
                             dataLength: p - dataOffset,
@@ -234,11 +230,14 @@ class Decoder {
         }
     }
 
-    getFramesNum(): number {
+    getFramesNum() {
         return this.frames.length;
     }
 
-    getFrameInfo(idx: number): IFrameInfo {
+    /**
+     * @param {number} idx
+     */
+    getFrameInfo(idx) {
         const frames = this.frames;
         if (idx < 0 || idx >= frames.length) {
             throw new Error('Frame index out of range.');
@@ -246,43 +245,47 @@ class Decoder {
         return frames[idx];
     }
 
-    decodeFrameRGBA(idx: number, buf: Uint8Array): Array<number> {
-        const pixels: Array<number> = [];
+    /**
+     * @param {number} idx
+     * @param {Uint8Array} buf
+     */
+    decodeFrameRGBA(idx, buf) {
+        /** @type {number[]} */
+        const pixels = [];
         try {
-
-            const frame: IFrameInfo = this.getFrameInfo(idx);
+            const frame = this.getFrameInfo(idx);
             const numPixels = frame.width * frame.height;
             const unpackInfo = unpackLZW(buf, frame.dataOffset, numPixels);
             if (!unpackInfo.ok) {
-                throw Error(unpackInfo.msg)
+                throw Error(unpackInfo.msg);
             }
-            const indexStream: Uint8Array = unpackInfo.output;
+            const indexStream = unpackInfo.output;
 
-            const paletteOffset: number = frame.paletteOffset;
-            let trans: number = frame.transparentIndex;
-            if (trans === null) {
+            const paletteOffset = frame.paletteOffset;
+            let trans = frame.transparentIndex;
+            if (trans == null) {
                 trans = 256;
             }
 
-            const width: number = this.width;
-            const frameWidth: number = frame.width;
-            const frameStride: number = width - frameWidth;
-            let xLeft: number = frameWidth;
+            const width = this.width;
+            const frameWidth = frame.width;
+            const frameStride = width - frameWidth;
+            let xLeft = frameWidth;
 
-            const opBegin: number = ((frame.y * width) + frame.x) * 4;
-            const opEnd: number = ((frame.y + frame.height) * width + frame.x) * 4;
-            let op: number = opBegin;
+            const opBegin = ((frame.y * width) + frame.x) * 4;
+            const opEnd = ((frame.y + frame.height) * width + frame.x) * 4;
+            let op = opBegin;
 
-            let scanStride: number = frameStride * 4;
+            let scanStride = frameStride * 4;
 
             if (frame.interlaced === true) {
                 scanStride += width * 4 * 7;
             }
 
-            let interlaceSkip: number = 8;
+            let interlaceSkip = 8;
 
             for (let i = 0, il = indexStream.length; i < il; ++i) {
-                const index: number = indexStream[i];
+                const index = indexStream[i];
 
                 if (xLeft === 0) {
                     op += scanStride;
@@ -298,9 +301,9 @@ class Decoder {
                     op += 4;
                 }
                 else {
-                    const r: number = get(paletteOffset + index * 3, buf);
-                    const g: number = get(paletteOffset + index * 3 + 1, buf);
-                    const b: number = get(paletteOffset + index * 3 + 2, buf);
+                    const r = get(paletteOffset + index * 3, buf);
+                    const g = get(paletteOffset + index * 3 + 1, buf);
+                    const b = get(paletteOffset + index * 3 + 2, buf);
                     pixels[op++] = r;
                     pixels[op++] = g;
                     pixels[op++] = b;
@@ -311,9 +314,10 @@ class Decoder {
             return pixels;
         }
         catch (e) {
+            console.error(e);
             return null;
         }
     };
 }
 
-export default Decoder;
+module.exports.Decoder = Decoder;

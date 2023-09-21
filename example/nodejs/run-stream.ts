@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import {addPrintFlow} from './util';
-import GIFrame from '../../src/giframe';
+import {GIFrame} from '../../src/giframe';
 
 const filename: string = process.argv[2] || '1.gif';
 const examplePath: string = path.resolve(__dirname, '..');
