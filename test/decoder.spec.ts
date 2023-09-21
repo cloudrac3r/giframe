@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import {Decoder} from '../src/decoder/decoder';
 import fs from 'fs-extra';
 import path from 'path';
-import flattenDeep from 'lodash.flattendeep';
 
 const BASE64 = 'R0lGODlhAgACAPAAAP8AACDfACH5BAAyAAAAIf8LTkVUU0NBUEUyLjADAQAAACwAAAAAAgACAAACAgxcACH5BAAyAAAALAAAAAACAAIAAAICRFwAOw==';
 
@@ -150,7 +149,7 @@ describe('Decoder', () => {
                 realRGBA[i + 60] = [0, 255, 0, 255];
                 realRGBA[i + 80] = [255, 0, 0, 255];
             }
-            const realPixels: Array<number> = flattenDeep(realRGBA);
+            const realPixels = realRGBA.flat();
             expect(pixels).to.be.deep.equal(realPixels);
         });
     });

@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "CommonJS",
         "removeComments": true,
         "preserveConstEnums": true,
         "noImplicitAny": false,
@@ -9,7 +9,8 @@
         "target": "es2015",
         "esModuleInterop": true,
         "downlevelIteration": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "moduleResolution": "Node"
     },
     "exclude": [
         "node_modules/**"

@@ -1,19 +1,9 @@
 {
   "name": "giframe",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "extract the first frame in GIF without reading whole bytes, support both browser and nodejs, using stream-like decoder",
   "author": "alienzhou <alienzhou16@163.com>",
   "license": "MIT",
-  "keywords": [
-    "gif",
-    "extract",
-    "frame",
-    "decode",
-    "gif89a",
-    "gif87a",
-    "stream-like",
-    "progressive"
-  ],
   "homepage": "https://github.com/alienzhou/giframe#readme",
   "repository": {
     "type": "git",
@@ -21,60 +11,27 @@
   },
   "scripts": {
     "start": "npm run example:browser",
-    "example:node:limit": "npm run build:node && ts-node example/nodejs/run-limit",
-    "example:node:stream": "npm run build:node && ts-node example/nodejs/run-stream",
-    "example:browser": "npm run build:browser && ts-node example/browser/app.ts",
-    "build:node": "tsc",
-    "build:browser": "rollup -c rollup.config.ts",
-    "build": "npm run build:node && npm run build:browser",
-    "test": "mocha --check-leaks -r ts-node/register test/**/*.spec.ts",
-    "coverage": "nyc -r lcov -e .ts -x \"test/**/*.ts\" npm run test",
-    "lint": "eslint src/** --fix --ext .ts",
-    "prepublishOnly": "npm run lint && npm run coverage && npm run build"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm run lint"
-    }
+    "example:node:limit": "ts-node example/nodejs/run-limit",
+    "example:node:stream": "ts-node example/nodejs/run-stream",
+    "example:browser": "ts-node example/browser/app.ts",
+    "test": "mocha --check-leaks -r ts-node/register test/**/*.spec.ts"
   },
   "main": "dist/node/giframe.js",
   "browser": "dist/umd/giframe.js",
   "module": "dist/esm/giframe.esm.js",
   "devDependencies": {
-    "@babel/core": "^7.8.3",
-    "@babel/plugin-transform-runtime": "^7.8.3",
-    "@babel/preset-env": "^7.8.3",
-    "@babel/runtime": "^7.8.3",
-    "@rollup/plugin-strip": "^1.3.1",
-    "@typescript-eslint/eslint-plugin": "^2.18.0",
-    "@typescript-eslint/parser": "^2.18.0",
-    "better-opn": "^1.0.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.6.3",
     "chai": "^4.2.0",
-    "coveralls": "^3.0.9",
-    "eslint": "^6.8.0",
-    "file-type": "^13.1.0",
     "fs-extra": "^8.1.0",
-    "gzip-size": "^5.1.1",
-    "husky": "^4.2.1",
-    "lodash.flattendeep": "^4.4.0",
-    "mocha": "^7.0.0",
-    "nyc": "^15.0.0",
+    "mocha": "^10.2.0",
     "ora": "^4.0.3",
     "pixelmatch": "^5.1.0",
     "pngjs": "^7.0.0",
-    "rollup": "^1.29.0",
-    "rollup-plugin-babel": "^4.3.3",
-    "rollup-plugin-commonjs": "^10.1.0",
-    "rollup-plugin-node-resolve": "^5.2.0",
-    "rollup-plugin-terser": "^5.2.0",
-    "rollup-plugin-typescript2": "^0.25.3",
-    "sharp": "^0.24.0",
+    "sharp": "^0.32.6",
     "sinon": "^8.1.0",
     "throttle-stream": "0.0.8",
     "ts-node": "^8.6.2",
     "typescript": "^3.7.5"
-  },
-  "dependencies": {
-    "@types/mocha": "^10.0.1"
   }
 }
