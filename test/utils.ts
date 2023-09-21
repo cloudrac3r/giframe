@@ -7,9 +7,8 @@ const TEMP_DIR = path.resolve(__dirname, 'tmp');
 export function writeTempImage(base64: string): Promise<string> {
     return new Promise((resolve, reject) => {
         const filename = +(new Date);
-        const ret = /^data:image\/(\w+);base64,([A-Za-z0-9+\/=]+)/.exec(base64);
-        const outputPath = path.resolve(TEMP_DIR, `${filename}.${ret[1]}`);
-        const buffer = Buffer.from(ret[2], 'base64');
+        const outputPath = path.resolve(TEMP_DIR, `${filename}.png`);
+        const buffer = Buffer.from(base64, 'base64');
         fs.outputFile(outputPath, buffer, function (err) {
             if (err) {
                 reject(err);

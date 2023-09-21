@@ -3,10 +3,27 @@ import sinon from 'sinon';
 import fs from 'fs-extra';
 import path from 'path';
 import GIFrame from '../src/giframe';
+import { PNG } from 'pngjs';
 import { writeTempImage, diffImage, cleanTempDir } from './utils';
 
 const GIF_PATH = path.resolve(__dirname, 'img', '1.gif');
 const LARGE_GIF_PATH = path.resolve(__dirname, 'img', '3.gif');
+
+function createBase64(pixels, obj): string {
+    const width = obj.width;
+    const height = obj.height;
+    let png = new PNG({
+		width,
+		height,
+		bitDepth: 8, // 8 red + 8 green + 8 blue + 8 alpha
+		colorType: 6, // RGBA
+		inputColorType: 6, // RGBA
+		inputHasAlpha: true,
+	});
+    png.data = Buffer.from(pixels);
+    let buffer = PNG.sync.write(png);
+    return buffer.toString("base64");
+}
 
 describe('Giframe', function () {
 
@@ -29,14 +46,14 @@ describe('Giframe', function () {
     });
 
     it('should create valid base64 by pixels', () => {
-        const base64: string = GIFrame.createBase64ByPixels([
+        const base64: string = createBase64([
             32, 223, 0, 255,
             255, 0, 0, 255,
             32, 223, 0, 255,
             255, 0, 0, 255
         ], { width: 2, height: 2, usePNG: true });
 
-        expect(base64).to.be.equal('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAABmJLR0QA/wD/AP+gvaeTAAAAFUlEQVQImWNQuM/w/z8Dw38mBigAADUPA/+4Dl2ZAAAAAElFTkSuQmCC');
+        expect(base64).to.be.equal('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4AWNUuM/w/74iAwMTAxQAACsXAwIcSfeYAAAAAElFTkSuQmCC');
     });
 
     it('should throw an error when stage is changed outside unintendedly', done => {
@@ -45,7 +62,7 @@ describe('Giframe', function () {
         const feed = () => giframe.feed(fs.readFileSync(GIF_PATH));
         expect(feed).to.be.throw('unknown internal status: mess');
 
-        giframe.getBase64()
+        giframe.getFrame()
             .then(() => expect.fail('promise should be rejected'))
             .catch((err: Error) => {
                 expect(err.message).to.be.equal('unknown internal status: mess');
@@ -58,13 +75,14 @@ describe('Giframe', function () {
         it('should automatically enter next stage when feeded enough bytes', async () => {
             const giframe = new GIFrame();
             giframe.feed(fs.readFileSync(GIF_PATH));
-            expect(await giframe.getBase64()).to.be.string;
+            expect((await giframe.getFrame()).pixels[0]).to.be.a('number');
         });
 
         it('should generate a correct first-frame image', async () => {
             const giframe = new GIFrame(0, { usePNG: true });
             giframe.feed(fs.readFileSync(GIF_PATH));
-            const base64 = await giframe.getBase64();
+            const frame = await giframe.getFrame();
+            const base64 = createBase64(frame.pixels, frame)
             const outputPath = await writeTempImage(base64);
             const diff = await diffImage(path.resolve(__dirname, 'img', '1-1.png'), outputPath, 0.1);
             expect(diff).to.be.equal(0);
@@ -73,7 +91,8 @@ describe('Giframe', function () {
         it('should generate a correct second-frame image', async () => {
             const giframe = new GIFrame(1, { usePNG: true });
             giframe.feed(fs.readFileSync(GIF_PATH));
-            const base64 = await giframe.getBase64();
+            const frame = await giframe.getFrame();
+            const base64 = createBase64(frame.pixels, frame);
             const outputPath = await writeTempImage(base64);
             const diff = await diffImage(path.resolve(__dirname, 'img', '1-2.png'), outputPath, 0.1);
             expect(diff).to.be.equal(0);
@@ -86,12 +105,14 @@ describe('Giframe', function () {
             });
 
             const giframe = new GIFrame(0, { usePNG: true });
-            giframe.on(GIFrame.event.PIXEL, () => stream.close());
+            giframe.on(GIFrame.event.DONE, () => stream.close());
             stream.on('data', chunk => {
+                // @ts-ignore
                 giframe.feed(chunk);
             });
 
-            const base64 = await giframe.getBase64();
+            const frame = await giframe.getFrame();
+            const base64 = createBase64(frame.pixels, frame);
             const outputPath = await writeTempImage(base64);
             const diff = await diffImage(path.resolve(__dirname, 'img', '3.png'), outputPath);
             expect(diff).to.be.equal(0);
@@ -108,7 +129,7 @@ describe('Giframe', function () {
         let listeners: Array<sinon.SinonSpy<any[], any[]>>;
 
         function check(expects: Array<boolean>) {
-            const names: Array<string> = ['init', 'meta', 'pixel', 'done', 'already'];
+            const names: Array<string> = ['init', 'meta', 'done', 'already'];
             listeners.forEach((l, idx) => {
                 expect(l.calledOnce, `${names[idx]} event`).to.be.equal(expects[idx]);
             });
@@ -122,14 +143,12 @@ describe('Giframe', function () {
                 sinon.spy(),
                 sinon.spy(),
                 sinon.spy(),
-                sinon.spy(),
                 sinon.spy()
             ];
             giframe.on(GIFrame.event.INIT, listeners[0]);
             giframe.on(GIFrame.event.META, listeners[1]);
-            giframe.on(GIFrame.event.PIXEL, listeners[2]);
-            giframe.on(GIFrame.event.DONE, listeners[3]);
-            giframe.on(GIFrame.event.ALREADY, listeners[4]);
+            giframe.on(GIFrame.event.DONE, listeners[2]);
+            giframe.on(GIFrame.event.ALREADY, listeners[3]);
         });
 
         it('should throw an error when the very first chunk is shorter than needed', () => {

@@ -6,17 +6,14 @@
         "noImplicitAny": false,
         "sourceMap": false,
         "outDir": "dist/node",
-        "target": "ES6",
+        "target": "es2015",
         "esModuleInterop": true,
         "downlevelIteration": true,
-        "suppressImplicitAnyIndexErrors": true,
-        "resolveJsonModule": true,
-        "lib": [
-            "DOM",
-            "ES5",
-            "ScriptHost"
-        ]
+        "resolveJsonModule": true
     },
+    "exclude": [
+        "node_modules/**"
+    ],
     "include": [
         "src/**/*",
         "rollup.config.ts"

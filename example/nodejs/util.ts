@@ -2,9 +2,28 @@ import fs from 'fs-extra';
 import path from 'path';
 import ora from 'ora';
 import GIFrame from '../../src/giframe';
+import assert from 'assert';
+import { PNG } from 'pngjs';
+import { IFrameInfo } from '../../src/types';
 
 type SpinFn = (text?: string, error?: Error) => number;
 const examplePath: string = path.resolve(__dirname, '..');
+
+function createBase64(pixels, obj): string {
+    const width = obj.width;
+    const height = obj.height;
+    let png = new PNG({
+		width,
+		height,
+		bitDepth: 8, // 8 red + 8 green + 8 blue + 8 alpha
+		colorType: 6, // RGBA
+		inputColorType: 6, // RGBA
+		inputHasAlpha: true,
+	});
+    png.data = Buffer.from(pixels);
+    let buffer = PNG.sync.write(png);
+    return buffer.toString("base64");
+}
 
 export function addPrintFlow(giframe: GIFrame, filename: string, totalPromise: Promise<number>): void {
 
@@ -17,7 +36,7 @@ export function addPrintFlow(giframe: GIFrame, filename: string, totalPromise: P
             const now: number = +(new Date);
             const cost: number = now - startTime;
             startTime = now;
-    
+
             if (error) {
                 spinner.fail(`${formerText} - failed!`);
                 console.log(error);
@@ -25,12 +44,12 @@ export function addPrintFlow(giframe: GIFrame, filename: string, totalPromise: P
             else {
                 spinner.succeed(`${formerText} - ${cost}ms`);
             }
-    
+
             if (text) {
                 spinner = ora(text).start();
                 formerText = text;
             }
-    
+
             return cost;
         }
 
@@ -49,20 +68,18 @@ export function addPrintFlow(giframe: GIFrame, filename: string, totalPromise: P
     const spin: SpinFn = createSpin('init basic info');
     giframe.on(GIFrame.event.INIT, () => spin('read meta info'));
     giframe.on(GIFrame.event.META, () => spin('decode pixels'));
-    giframe.on(GIFrame.event.PIXEL, () => spin('generate base64 string'));
     giframe.on(GIFrame.event.DONE, () => spin('create image file'));
 
-    giframe.on(GIFrame.event.PIXEL, () => {
-        bufUsed = giframe.bufferLength;
-    });
-    giframe.on(GIFrame.event.DONE, base64 => {
-        const data = (base64 as string).replace(/^data:image\/\w+;base64,/, '');
+    giframe.getFrame().then(result => {
+        const pixels = result.pixels;
+        bufUsed = result.pixels.length;
+        const base64 = createBase64(pixels, result);
         const name = path.parse(filename).name;
         const outputPath = path.resolve(examplePath, 'output', `${name}.jpg`);
-        const buffer = Buffer.from(data, 'base64');
+        const buffer = Buffer.from(base64, 'base64');
         fs.outputFile(outputPath, buffer, function (err) {
             if (err) {
-                spin(null, err);
+                spin(undefined, err);
                 return;
             }
             spin();

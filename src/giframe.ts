@@ -1,13 +1,11 @@
 import { IFrameInfo, ICreateBase64Opts } from './types';
 import Decoder from './decoder';
 import EventEmitter from './utils/event.emitter';
-import createBase64 from './utils/canvas';
 
 enum Stage {
     NONE = 'none',
     INIT = 'init',
     META = 'decode-meta',
-    PIXEL = 'decode-pixel',
     DONE = 'done',
     ALREADY = 'already-done'
 };
@@ -22,6 +20,12 @@ interface IGIFrameOpts {
     usePNG: boolean;
 }
 
+interface IReturn {
+    width: number;
+    height: number;
+    pixels: number[];
+}
+
 const DEFAULT_OPTS: IGIFrameOpts = {
     usePNG: false
 };
@@ -29,16 +33,11 @@ const DEFAULT_OPTS: IGIFrameOpts = {
 class GIFrame extends EventEmitter<EmitData> {
     static event = Stage;
 
-    static createBase64ByPixels(pixels: Array<number>, opts: ICreateBase64Opts): string {
-        return createBase64(pixels, opts);
-    }
-
     private stage: Stage = Stage.NONE;
     private decoder: Decoder = null;
     private frameIdx: number = 0;
     private buf: Uint8Array;
-    private base64: string = null;
-    private deferred: IDeferred<string>;
+    private deferred: IDeferred<IReturn>;
     private pixels: Array<number> = null;
     private isLocked: boolean = false;
     public opts: IGIFrameOpts;
@@ -52,9 +51,9 @@ class GIFrame extends EventEmitter<EmitData> {
         else {
             this.opts = Object.create(DEFAULT_OPTS);
         }
-        let resolve: (data: string) => unknown;
+        let resolve: (data: IReturn) => unknown;
         let reject: Function;
-        const promise: Promise<string> = new Promise((r, j) => (resolve = r, reject = j));
+        const promise: Promise<IReturn> = new Promise((r, j) => (resolve = r, reject = j));
         this.deferred = { promise, resolve, reject };
     }
 
@@ -105,7 +104,7 @@ class GIFrame extends EventEmitter<EmitData> {
 
         // already done, never update anymore
         if (Stage.DONE === this.stage) {
-            this.switchStage(Stage.ALREADY, this.base64);
+            this.switchStage(Stage.ALREADY, this.pixels);
             return;
         }
 
@@ -139,25 +138,12 @@ class GIFrame extends EventEmitter<EmitData> {
             const pixels = decoder.decodeFrameRGBA(this.frameIdx, buf);
             if (pixels) {
                 this.pixels = pixels;
-                this.switchStage(Stage.PIXEL, pixels);
+                const { width, height } = decoder.getFrameInfo(this.frameIdx);
+                this.deferred.resolve({width, height, pixels});
+                this.switchStage(Stage.DONE, pixels);
                 // try to enter next stage
                 this.update(buf);
             }
-            return;
-        }
-
-        if (Stage.PIXEL === this.stage) {
-            const decoder = this.decoder;
-            // convert to base64
-            const { width, height } = decoder.getFrameInfo(this.frameIdx);
-            const opts: ICreateBase64Opts = { width, height };
-            if (this.opts.usePNG) {
-                opts.usePNG = true;
-            }
-            this.base64 = createBase64(this.pixels, opts);
-            this.deferred.resolve(this.base64);
-            this.switchStage(Stage.DONE, this.base64);
-
             return;
         }
 
@@ -166,7 +152,7 @@ class GIFrame extends EventEmitter<EmitData> {
         throw err;
     }
 
-    getBase64(): Promise<string> {
+    getFrame(): Promise<IReturn> {
         return this.deferred.promise;
     }
 }
