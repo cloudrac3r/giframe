@@ -27,7 +27,7 @@ const Stage = {
  * @typedef IReturn
  * @prop {number} width
  * @prop {number} height
- * @prop {number[]} pixels
+ * @prop {Uint8Array} pixels
  */
 
 class GIFrame extends EventEmitter {
