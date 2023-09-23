@@ -16,9 +16,8 @@
     "example:browser": "ts-node example/browser/app.ts",
     "test": "mocha --check-leaks -r ts-node/register test/**/*.spec.ts"
   },
-  "main": "dist/node/giframe.js",
+  "main": "src/giframe.js",
   "browser": "dist/umd/giframe.js",
-  "module": "dist/esm/giframe.esm.js",
   "devDependencies": {
     "@types/mocha": "^10.0.1",
     "@types/node": "^20.6.3",
