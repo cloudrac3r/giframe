@@ -250,11 +250,10 @@ class Decoder {
      * @param {Uint8Array} buf
      */
     decodeFrameRGBA(idx, buf) {
-        /** @type {number[]} */
-        const pixels = [];
         try {
             const frame = this.getFrameInfo(idx);
             const numPixels = frame.width * frame.height;
+            const pixels = new Uint8Array(numPixels * 4);
             const unpackInfo = unpackLZW(buf, frame.dataOffset, numPixels);
             if (!unpackInfo.ok) {
                 throw Error(unpackInfo.msg);

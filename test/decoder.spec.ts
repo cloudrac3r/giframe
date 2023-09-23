@@ -91,12 +91,12 @@ describe('Decoder', () => {
             decoder.decodeMetaAndFrameInfo(buffer, 0);
 
             const pixels = decoder.decodeFrameRGBA(0, buffer.slice(0, 70));
-            expect(pixels).to.be.deep.equal([
+            expect(pixels).to.be.deep.equal(Uint8Array.from([
                 32, 223, 0, 255,
                 255, 0, 0, 255,
                 32, 223, 0, 255,
                 255, 0, 0, 255
-            ]);
+            ]));
         });
 
         it('should be correctly when chunks are divided and input many times', () => {
@@ -106,12 +106,12 @@ describe('Decoder', () => {
             decoder.decodeMetaAndFrameInfo(buffer.slice(0, 70), 0);
 
             const pixels = decoder.decodeFrameRGBA(0, buffer.slice(0, 70));
-            expect(pixels).to.be.deep.equal([
+            expect(pixels).to.be.deep.equal(Uint8Array.from([
                 32, 223, 0, 255,
                 255, 0, 0, 255,
                 32, 223, 0, 255,
                 255, 0, 0, 255
-            ]);
+            ]));
         });
 
         it('should not throw an error when bytes are broken', () => {
@@ -135,7 +135,7 @@ describe('Decoder', () => {
                 offset += 10;
             }
 
-            let pixels: number[] | null = null;
+            let pixels: Uint8Array | null = null;
             while (!(pixels = decoder.decodeFrameRGBA(0, buf.slice(0, offset)))) {
                 offset += 10;
             }
@@ -149,7 +149,7 @@ describe('Decoder', () => {
                 realRGBA[i + 60] = [0, 255, 0, 255];
                 realRGBA[i + 80] = [255, 0, 0, 255];
             }
-            const realPixels = realRGBA.flat();
+            const realPixels = Uint8Array.from(realRGBA.flat());
             expect(pixels).to.be.deep.equal(realPixels);
         });
     });
